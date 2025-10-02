@@ -137,7 +137,10 @@ impl PyManager {
     }
 
     /// 查找可用的Python版本
-    pub async fn find_python_versions(&self, _version_request: Option<&str>) -> Result<Vec<String>> {
+    pub async fn find_python_versions(
+        &self,
+        _version_request: Option<&str>,
+    ) -> Result<Vec<String>> {
         // 确保uv已安装
         Self::ensure_uv_installed().await?;
 

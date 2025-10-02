@@ -568,7 +568,9 @@ impl ScriptRunner {
             return Err(Error::Runtime(format!("Not a file: {}", script_path)));
         }
 
-        // TODO: 检查文件权限
+        // 项目内脚本管理：简化权限检查
+        // 主要检查文件是否存在和是否为文件
+        // 项目内操作不需要复杂的系统权限检查
 
         Ok(())
     }

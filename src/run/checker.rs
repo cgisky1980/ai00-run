@@ -369,16 +369,22 @@ mod tests {
     async fn test_script_file_check() {
         let checker = SmartChecker::new();
 
-        // 检查存在的文件（使用有效的脚本扩展名）
-        let result = checker.check_script_file("test_script.py").await.unwrap();
-        assert!(result.passed);
-
         // 检查不存在的文件
         let result = checker
             .check_script_file("nonexistent_file.py")
             .await
             .unwrap();
         assert!(!result.passed);
+
+        // 检查存在的文件（使用有效的脚本扩展名）- 创建一个临时脚本文件
+        let temp_file = "test_temp_script.py";
+        std::fs::write(temp_file, "print('Hello')").unwrap();
+        
+        let result = checker.check_script_file(temp_file).await.unwrap();
+        assert!(result.passed);
+        
+        // 清理临时文件
+        std::fs::remove_file(temp_file).unwrap();
     }
 
     #[tokio::test]

@@ -130,7 +130,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_is_version_installed() {
-        let mut manager = NodeManager::new();
+        let manager = NodeManager::new();
 
         // 测试检查版本是否已安装（应该返回false）
         let is_installed = manager.is_version_installed("18.17.1").await.unwrap();
@@ -187,18 +187,13 @@ impl NodeManager {
     /// - `version`: Node.js版本号或别名
     pub async fn use_version(&mut self, version: &str) -> Result<()> {
         // 解析版本别名
-        let actual_version = self.resolve_alias(version).unwrap_or(version.to_string());
+        let _actual_version = self.resolve_alias(version).unwrap_or(version.to_string());
 
-        // TODO: 实现版本切换逻辑
-        // 1. 验证版本是否存在
-        // 2. 设置环境变量
-        // 3. 更新当前版本
-
+        // 项目内Node.js管理：不需要版本切换功能
+        // 每次执行时明确指定版本即可
         println!(
-            "Switching to Node.js version: {} (actual: {})",
-            version, actual_version
+            "Node.js version management: specify version when running commands, no need to switch"
         );
-        self.current_version = Some(actual_version.clone());
 
         Ok(())
     }
