@@ -7,7 +7,7 @@ license = "MIT OR Apache-2.0"
 description = "A Rust library for unified runtime management of Node.js, Python, and Rust environments"
 repository = "https://github.com/cgisky1980/ai00-run"
 readme = "README.md"
-keywords = ["runtime", "nodejs", "python", "script", "management", "virtual-environment"]
+keywords = ["runtime", "nodejs", "python", "script", "management"]
 categories = ["command-line-utilities", "development-tools", "web-programming"]
 
 # 这是一个库项目，不是可执行程序
