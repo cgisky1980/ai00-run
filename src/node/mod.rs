@@ -90,8 +90,6 @@ impl NodeManager {
         Ok(versions)
     }
 
-
-
     /// 在指定版本下运行命令
     ///
     /// # 参数
@@ -239,8 +237,6 @@ pub async fn is_installed(version: &str) -> Result<bool> {
 pub async fn list_local() -> Result<Vec<String>> {
     NodeManager::new().list_local().await
 }
-
-
 
 /// 便捷函数：在指定版本下运行命令
 pub async fn run_command(version: &str, command: &str) -> Result<()> {

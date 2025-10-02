@@ -379,10 +379,10 @@ mod tests {
         // 检查存在的文件（使用有效的脚本扩展名）- 创建一个临时脚本文件
         let temp_file = "test_temp_script.py";
         std::fs::write(temp_file, "print('Hello')").unwrap();
-        
+
         let result = checker.check_script_file(temp_file).await.unwrap();
         assert!(result.passed);
-        
+
         // 清理临时文件
         std::fs::remove_file(temp_file).unwrap();
     }
