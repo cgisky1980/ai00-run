@@ -228,6 +228,9 @@ impl PyManager {
             command.arg("--python").arg(format!("python{}", version));
         }
 
+        // 添加--clear标志以跳过交互式提示（在CI环境中很重要）
+        command.arg("--clear");
+
         command.arg(&venv_path);
 
         // 创建虚拟环境

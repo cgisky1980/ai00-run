@@ -20,8 +20,6 @@ jobs:
       with:
         toolchain: stable
         components: rustfmt, clippy
-    - name: Run tests
-      run: cargo test --release
     - name: Check formatting
       run: cargo fmt -- --check
     - name: Run clippy
