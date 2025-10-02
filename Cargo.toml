@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["AI00-Run Team"]
 license = "MIT OR Apache-2.0"
 description = "A Rust library for unified runtime management of Node.js, Python, and Rust environments"
-repository = "https://github.com/ai00-run/ai00-run"
+repository = "https://github.com/cgisky1980/ai00-run"
 readme = "README.md"
 
 # 这是一个库项目，不是可执行程序
