@@ -1,0 +1,25 @@
+{
+  "name": "test_python_app",
+  "description": "测试Python应用程序配置",
+  "script_type": "python",
+  "script_path": "src/test_python.py",
+  "runtime_version": "3.11",
+  "venv_path": ".venv",
+  "args": ["--verbose", "--test"],
+  "env_vars": {
+    "PYTHONPATH": ".",
+    "DEBUG": "true",
+    "TEST_MODE": "true"
+  },
+  "working_dir": ".",
+  "timeout": null,
+  "async_execution": false,
+  "dependencies": [],
+  "streaming_execution": true,
+  "stream_buffer_size": 16384,
+  "restart_policy": "on-failure",
+  "max_restarts": 5,
+  "restart_delay": 10000,
+  "monitor_interval": 2000,
+  "daemon_mode": false
+}

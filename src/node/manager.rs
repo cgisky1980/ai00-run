@@ -53,8 +53,8 @@ pub enum NodeVersion {
 impl NodeVersion {
     /// 解析版本字符串
     pub fn parse(version_str: &str) -> Result<Self> {
-        if version_str.starts_with("lts/") {
-            Ok(NodeVersion::Lts(version_str[4..].to_string()))
+        if let Some(stripped) = version_str.strip_prefix("lts/") {
+            Ok(NodeVersion::Lts(stripped.to_string()))
         } else if version_str == "latest" || version_str == "stable" {
             Ok(NodeVersion::Alias(version_str.to_string()))
         } else if version_str.chars().all(|c| c.is_ascii_digit() || c == '.') {

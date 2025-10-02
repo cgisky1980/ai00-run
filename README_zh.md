@@ -16,6 +16,12 @@ AI00 Run 是一个现代化的多语言运行时管理库，旨在为开发者�
 - **包管理**：Python包安装、卸载和列表功能
 - **版本管理**：Node.js和Python版本安装和检查
 - **脚本执行**：支持在指定运行时环境中执行脚本
+- **流式执行**：长时间运行进程的实时输出流式传输
+- **长时间运行进程支持**：无限期执行，支持进程监控和自动重启
+- **配置管理**：JSON/YAML配置文件支持脚本执行
+- **超时控制**：可配置的脚本和命令执行超时时间
+- **进程监控**：实时进程状态跟踪和健康检查
+- **自动重启**：可配置的失败进程重启策略
 
 ## 快速开始
 
@@ -28,6 +34,101 @@ AI00 Run 是一个现代化的多语言运行时管理库，旨在为开发者�
 ai00-run = { git = "https://github.com/cgisky1980/ai00-run.git" }
 # 或者使用本地路径
 # ai00-run = { path = "./ai00-run" }
+```
+
+### 🚀 重点使用方式：基于配置文件的脚本执行
+
+**强烈推荐使用配置文件方式来运行脚本**，这种方式提供了最完整、最灵活的功能支持，包括复杂的配置选项、环境变量管理、依赖安装等。
+
+#### 从配置文件运行脚本
+
+ai00-run支持基于配置文件（JSON或YAML格式）运行脚本，这允许更复杂和可重用的脚本配置。
+
+```rust
+use ai00_run::run;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let runner = run::ScriptRunner::new();
+    
+    // 从JSON配置运行脚本
+    let result = runner.run_from_config("config/script_config.json", None).await?;
+    println!("脚本结果: {}", result.stdout);
+    
+    // 从YAML配置运行脚本
+    let result = runner.run_from_config("config/script_config.yaml", None).await?;
+    println!("脚本结果: {}", result.stdout);
+    
+    // 使用自定义选项运行
+    let options = run::ExecuteOptions {
+        timeout_ms: Some(60000),
+        working_dir: Some("examples/test-project".to_string()),
+        env_vars: Some(vec![("NODE_ENV".to_string(), "development".to_string())]),
+    };
+    
+    let result = runner.run_from_config_with_options("config.json", Some(options)).await?;
+    println!("脚本结果: {}", result.stdout);
+    
+    Ok(())
+}
+```
+
+#### 配置文件格式示例
+
+**JSON配置示例:**
+```json
+{
+  "name": "example_python_app",
+  "description": "一个示例Python应用程序配置",
+  "script_type": "python",
+  "script_path": "src/main.py",
+  "runtime_version": "3.11",
+  "venv_path": ".venv",
+  "args": ["--verbose", "--debug"],
+  "env_vars": {
+    "PYTHONPATH": ".",
+    "DEBUG": "true"
+  },
+  "working_dir": "examples/test-project",
+  "timeout": null,
+  "async_execution": true,
+  "dependencies": ["requests", "flask"],
+  "streaming_execution": true,
+  "stream_buffer_size": 16384,
+  "restart_policy": "on-failure",
+  "max_restarts": 5,
+  "restart_delay": 10000,
+  "monitor_interval": 2000,
+  "daemon_mode": false
+}
+```
+
+**YAML配置示例:**
+```yaml
+name: example_node_app
+description: 一个示例Node.js应用程序配置
+script_type: node
+script_path: src/app.js
+runtime_version: 18.0.0
+args:
+  - --port
+  - "3000"
+env_vars:
+  NODE_ENV: development
+  DEBUG: true
+working_dir: examples/test-project
+timeout: null
+async_execution: true
+dependencies:
+  - express
+  - cors
+streaming_execution: true
+stream_buffer_size: 16384
+restart_policy: on-failure
+max_restarts: 5
+restart_delay: 10000
+monitor_interval: 2000
+daemon_mode: false
 ```
 
 ### 基本使用示例
@@ -196,6 +297,10 @@ async fn main() -> ai00_run::Result<()> {
 
 ### 运行脚本
 
+## 脚本执行
+
+### 运行脚本
+
 ```rust
 use ai00_run::run;
 
@@ -211,7 +316,7 @@ async fn main() -> ai00_run::Result<()> {
     let result = runner.run_python_script("script.py", &[], Some("3.11"), Some(".venv")).await?;
     println!("Python脚本结果: {}", result.stdout);
     
-    // 运行Shell脚本
+    // 运行shell脚本
     let result = runner.run_shell_script("script.sh", &[]).await?;
     println!("Shell脚本结果: {}", result.stdout);
     
@@ -248,6 +353,410 @@ async fn main() -> ai00_run::Result<()> {
     Ok(())
 }
 ```
+
+## 流式执行和长时间运行脚本执行
+
+AI00 Run 支持流式执行和长时间运行进程管理，包括实时输出流、进程监控和自动重启功能。
+
+### 直接流式执行
+
+```rust
+use ai00_run::run::RunConfig;
+use std::time::Duration;
+
+let config = RunConfig {
+    script_type: "python".to_string(),
+    script_path: "long_running_script.py".to_string(),
+    args: vec!["--daemon"],
+    timeout: None, // 无超时限制，支持长时间运行
+    ..Default::default()
+};
+
+// 执行并获取流式输出
+let mut stream = config.execute_streaming().await?;
+while let Some(output) = stream.next().await {
+    println!("输出: {}", output);
+}
+```
+
+### 长时间运行进程配置
+
+**JSON配置示例:**
+```json
+{
+  "name": "long_running_service",
+  "description": "长时间运行的服务进程",
+  "script_type": "python",
+  "script_path": "service.py",
+  "timeout": null,
+  "streaming_execution": true,
+  "restart_policy": "on-failure",
+  "max_restarts": 5,
+  "restart_delay": 10000,
+  "monitor_interval": 2000,
+  "daemon_mode": true
+}
+```
+
+**重启策略选项:**
+- `"never"`: 从不重启（默认）
+- `"on-failure"`: 仅在进程失败时重启
+- `"always"`: 总是重启（即使进程正常退出）
+
+### 监控配置字段说明
+
+- `monitor_interval`: 进程监控间隔时间（毫秒），用于检查进程状态
+- `max_restarts`: 最大重启次数，防止无限重启循环
+- `restart_delay`: 重启延迟时间（毫秒），避免过于频繁的重启
+- `daemon_mode`: 守护进程模式，适用于后台服务
+
+### 高级流式执行与进程控制
+
+```rust
+use ai00_run::run::RunConfig;
+use ai00_run::streaming::StreamingConfig;
+
+let run_config = RunConfig {
+    script_type: "python".to_string(),
+    script_path: "monitor.py".to_string(),
+    timeout: None, // 无超时限制
+    ..Default::default()
+};
+
+let streaming_config = StreamingConfig {
+    buffer_size: 16384,
+    restart_policy: "on-failure".to_string(),
+    max_restarts: 5,
+    restart_delay: Duration::from_secs(10),
+    monitor_interval: Duration::from_secs(2),
+};
+
+let mut controller = run_config.execute_with_control(streaming_config).await?;
+
+// 监控进程状态
+loop {
+    let status = controller.get_status().await?;
+    println!("进程状态: {:?}", status);
+    
+    if status.is_finished() {
+        break;
+    }
+    
+    tokio::time::sleep(Duration::from_secs(5)).await;
+}
+```
+
+### 基于配置的流式执行
+
+```rust
+use ai00_run::config::ConfigManager;
+
+let config_manager = ConfigManager::new("configs/")?;
+let config = config_manager.load_config("long_running_app.json").await?;
+
+// 执行配置中的脚本
+let mut stream = config.execute_streaming().await?;
+
+while let Some(output) = stream.next().await {
+    match output {
+        Ok(line) => println!("输出: {}", line),
+        Err(e) => eprintln!("错误: {}", e),
+    }
+}
+```
+
+### 使用新线程执行流式返回脚本
+
+AI00 Run 使用Tokio异步运行时自动管理线程，无需手动创建新线程。流式执行功能会自动在后台线程中运行脚本，并通过消息通道实时返回输出。
+
+#### 流式执行脚本（自动线程管理）
+
+```rust
+use ai00_run::run;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let runner = run::ScriptRunner::new();
+    
+    // 流式执行Node.js脚本（自动在新线程中运行）
+    let mut handle = runner.run_node_script_stream("long_running.js", &[], Some("18.0.0")).await?;
+    
+    // 实时接收流式输出
+    while let Some(message) = handle.receiver.recv().await {
+        match message {
+            run::StreamMessage::Stdout(line) => {
+                println!("[STDOUT] {}", line);
+            }
+            run::StreamMessage::Stderr(line) => {
+                eprintln!("[STDERR] {}", line);
+            }
+            run::StreamMessage::Exit(code) => {
+                println!("进程退出，代码: {}", code);
+                break;
+            }
+            run::StreamMessage::Error(err) => {
+                eprintln!("执行错误: {}", err);
+                break;
+            }
+        }
+    }
+    
+    Ok(())
+}
+```
+
+#### 多脚本并行执行（多线程管理）
+
+```rust
+use ai00_run::run;
+use tokio::task::JoinSet;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let runner = run::ScriptRunner::new();
+    let mut join_set = JoinSet::new();
+    
+    // 并行执行多个脚本（每个脚本在独立的异步任务中运行）
+    let scripts = vec![
+        ("script1.py", "python"),
+        ("script2.js", "node"),
+        ("script3.sh", "shell"),
+    ];
+    
+    for (script_path, script_type) in scripts {
+        let runner_clone = runner.clone();
+        
+        join_set.spawn(async move {
+            match script_type {
+                "python" => {
+                    let mut handle = runner_clone.run_python_script_stream(
+                        script_path, &[], Some("3.11"), Some(".venv")
+                    ).await?;
+                    
+                    while let Some(message) = handle.receiver.recv().await {
+                        match message {
+                            run::StreamMessage::Stdout(line) => {
+                                println!("[{}] {}", script_path, line);
+                            }
+                            run::StreamMessage::Exit(code) => {
+                                println!("[{}] 退出代码: {}", script_path, code);
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                "node" => {
+                    let mut handle = runner_clone.run_node_script_stream(
+                        script_path, &[], Some("18.0.0")
+                    ).await?;
+                    
+                    while let Some(message) = handle.receiver.recv().await {
+                        match message {
+                            run::StreamMessage::Stdout(line) => {
+                                println!("[{}] {}", script_path, line);
+                            }
+                            run::StreamMessage::Exit(code) => {
+                                println!("[{}] 退出代码: {}", script_path, code);
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+                _ => {
+                    let mut handle = runner_clone.run_shell_script_stream(script_path, &[]).await?;
+                    
+                    while let Some(message) = handle.receiver.recv().await {
+                        match message {
+                            run::StreamMessage::Stdout(line) => {
+                                println!("[{}] {}", script_path, line);
+                            }
+                            run::StreamMessage::Exit(code) => {
+                                println!("[{}] 退出代码: {}", script_path, code);
+                                break;
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+            
+            Ok::<(), ai00_run::Error>(())
+        });
+    }
+    
+    // 等待所有脚本执行完成
+    while let Some(result) = join_set.join_next().await {
+        match result {
+            Ok(Ok(())) => println!("脚本执行完成"),
+            Ok(Err(e)) => eprintln!("脚本执行错误: {}", e),
+            Err(e) => eprintln!("任务执行错误: {}", e),
+        }
+    }
+    
+    Ok(())
+}
+```
+
+#### 线程管理和控制
+
+```rust
+use ai00_run::run;
+use std::time::Duration;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let runner = run::ScriptRunner::new();
+    
+    // 启动长时间运行的脚本
+    let mut handle = runner.run_python_script_stream(
+        "service.py", &["--daemon"], Some("3.11"), Some(".venv")
+    ).await?;
+    
+    // 监控脚本状态
+    let mut message_count = 0;
+    let start_time = std::time::Instant::now();
+    
+    loop {
+        tokio::select! {
+            // 接收流式消息
+            message = handle.receiver.recv() => {
+                if let Some(msg) = message {
+                    match msg {
+                        run::StreamMessage::Stdout(line) => {
+                            println!("[服务输出] {}", line);
+                            message_count += 1;
+                        }
+                        run::StreamMessage::Exit(code) => {
+                            println!("服务进程退出，代码: {}", code);
+                            break;
+                        }
+                        run::StreamMessage::Error(err) => {
+                            eprintln!("服务错误: {}", err);
+                            break;
+                        }
+                        _ => {}
+                    }
+                } else {
+                    println!("消息通道已关闭");
+                    break;
+                }
+            }
+            
+            // 定时检查（每5秒）
+            _ = tokio::time::sleep(Duration::from_secs(5)) => {
+                let elapsed = start_time.elapsed();
+                println!("运行时间: {:?}, 接收消息数: {}", elapsed, message_count);
+                
+                // 可以在这里添加自定义逻辑，如重启条件检查等
+                if elapsed > Duration::from_secs(60) {
+                    println!("运行超过1分钟，正常退出");
+                    break;
+                }
+            }
+        }
+    }
+    
+    Ok(())
+}
+```
+
+#### 基于配置文件的流式执行（推荐方式）
+
+```json
+{
+  "name": "streaming_service",
+  "description": "流式服务脚本",
+  "script_type": "python",
+  "script_path": "service.py",
+  "runtime_version": "3.11",
+  "venv_path": ".venv",
+  "args": ["--daemon", "--verbose"],
+  "streaming_execution": true,
+  "timeout": null,
+  "restart_policy": "on-failure",
+  "max_restarts": 3
+}
+```
+
+```rust
+use ai00_run::run;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let runner = run::ScriptRunner::new();
+    
+    // 从配置文件启动流式脚本
+    let mut handle = runner.run_from_config_stream("config/streaming_service.json").await?;
+    
+    // 处理流式输出
+    while let Some(message) = handle.receiver.recv().await {
+        match message {
+            run::StreamMessage::Stdout(line) => {
+                // 处理标准输出
+                process_stdout(&line);
+            }
+            run::StreamMessage::Stderr(line) => {
+                // 处理错误输出
+                process_stderr(&line);
+            }
+            run::StreamMessage::Exit(code) => {
+                // 处理进程退出
+                handle_exit(code);
+                break;
+            }
+            run::StreamMessage::Error(err) => {
+                // 处理错误
+                handle_error(&err);
+                break;
+            }
+        }
+    }
+    
+    Ok(())
+}
+
+fn process_stdout(line: &str) {
+    println!("[服务输出] {}", line);
+    // 可以添加日志记录、数据分析等逻辑
+}
+
+fn process_stderr(line: &str) {
+    eprintln!("[服务错误] {}", line);
+    // 可以添加错误处理、告警等逻辑
+}
+
+fn handle_exit(code: i32) {
+    println!("服务退出，代码: {}", code);
+    // 可以添加清理、重启等逻辑
+}
+
+fn handle_error(err: &str) {
+    eprintln!("执行错误: {}", err);
+    // 可以添加错误恢复逻辑
+}
+```
+
+### 线程管理特性
+
+1. **自动线程管理**: AI00 Run使用Tokio异步运行时，自动管理线程池
+2. **非阻塞执行**: 流式执行不会阻塞主线程，适合GUI应用和服务器
+3. **资源控制**: 可以限制并发任务数量，避免资源耗尽
+4. **错误隔离**: 每个脚本在独立的异步任务中运行，错误不会影响其他任务
+5. **优雅关闭**: 支持信号处理和优雅关闭机制
+
+### 使用场景
+
+1. **长时间运行服务**：Web服务器、API服务、后台任务等
+2. **实时监控应用**：日志监控、系统监控、性能监控等
+3. **自动恢复服务**：关键服务进程的自动重启和恢复
+4. **流式数据处理**：实时数据处理、流式分析等
+5. **Web服务器**: 长时间运行的HTTP服务器进程
+6. **数据处理**: 需要实时监控进度的数据处理任务
+7. **监控服务**: 系统监控和告警服务
+8. **开发工具**: 实时编译和构建工具
+9. **CI/CD**: 持续集成和部署流水线
 
 ## 项目初始化
 
@@ -381,6 +890,11 @@ cargo run --release
 - Node.js版本安装和检查
 - 脚本执行和命令运行
 - 异步和同步命令执行
+- 流式执行和长时间运行进程管理
+- 实时输出流式传输
+- 进程监控和健康检查
+- 自动重启策略
+- 配置文件和配置管理
 
 **部分实现的功能：**
 - Node.js的npx命令执行

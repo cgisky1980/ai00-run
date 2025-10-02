@@ -306,6 +306,7 @@ impl InitManager {
     }
 
     /// 下载最新版uv（保留方法但标记为已弃用）
+    #[allow(dead_code)]
     async fn download_latest_uv(&self) -> Result<()> {
         // 这个方法现在被install_uv_with_script替代
         println!("Using new UV installation method...");

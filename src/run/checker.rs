@@ -2,10 +2,9 @@
 //!
 //! 提供智能的运行时环境检查、依赖验证和配置验证功能。
 
-use crate::error::{Error, Result};
+use crate::error::Result;
 use crate::node::NodeManager;
 use crate::py::PyManager;
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// 检查结果
@@ -153,7 +152,7 @@ impl SmartChecker {
 
         // 检查文件权限（在Windows上主要是检查文件是否可读）
         if let Ok(metadata) = std::fs::metadata(&path) {
-            let permissions = metadata.permissions();
+            let _permissions = metadata.permissions();
 
             // 在Windows上，主要检查文件是否可读
             if std::fs::read_to_string(&path).is_err() {

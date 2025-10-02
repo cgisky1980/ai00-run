@@ -155,7 +155,7 @@ impl NodeManager {
             let installed_versions = self.list_local().await?;
             if installed_versions.is_empty() {
                 return Err(crate::error::Error::Version(
-                    "No Node.js versions installed".to_string()
+                    "No Node.js versions installed".to_string(),
                 ));
             }
             // 将版本字符串复制到新的String中，避免生命周期问题
@@ -176,14 +176,14 @@ impl NodeManager {
         // 获取Node.js可执行文件路径
         let node_path = self.get_node_path(&target_version).await?;
         let node_dir = std::path::Path::new(&node_path).parent().unwrap();
-        
+
         // 构建npx路径（Windows使用npx.cmd，Unix使用bin/npx）
         let npx_path = if cfg!(windows) {
             node_dir.join("npx.cmd")
         } else {
             node_dir.join("bin").join("npx")
         };
-        
+
         if !npx_path.exists() {
             return Err(crate::error::Error::Version(format!(
                 "npx not found for Node.js version {}",

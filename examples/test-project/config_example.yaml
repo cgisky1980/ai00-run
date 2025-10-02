@@ -1,0 +1,23 @@
+name: test_node_app
+description: 测试Node.js应用程序配置
+script_type: node
+script_path: src/test_node.js
+runtime_version: 18.0.0
+args:
+  - --test
+  - --verbose
+env_vars:
+  NODE_ENV: development
+  DEBUG: true
+  TEST_MODE: true
+working_dir: .
+timeout: null
+async_execution: false
+dependencies: []
+streaming_execution: true
+stream_buffer_size: 16384
+restart_policy: on-failure
+max_restarts: 5
+restart_delay: 10000
+monitor_interval: 2000
+daemon_mode: false

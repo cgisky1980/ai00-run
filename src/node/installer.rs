@@ -5,25 +5,32 @@
 use crate::error::{Error, Result};
 use reqwest::Client;
 use serde::Deserialize;
-use std::collections::HashMap;
 use std::io::Read;
 use std::path::PathBuf;
-use std::process::Command;
 use tokio::fs;
-use tokio::io::AsyncWriteExt;
 
 /// Node.js 版本信息结构体
 #[derive(Debug, Deserialize, Clone)]
 pub struct NodeVersionInfo {
+    /// Node.js版本号
     pub version: String,
+    /// 发布日期
     pub date: String,
+    /// 包含的文件列表
     pub files: Vec<String>,
+    /// npm版本号
     pub npm: Option<String>,
+    /// V8引擎版本号
     pub v8: Option<String>,
+    /// uv版本号
     pub uv: Option<String>,
+    /// zlib版本号
     pub zlib: Option<String>,
+    /// OpenSSL版本号
     pub openssl: Option<String>,
+    /// 模块版本号
     pub modules: Option<String>,
+    /// LTS版本信息
     #[serde(alias = "lts")]
     pub lts: Option<serde_json::Value>,
 }
@@ -215,9 +222,9 @@ impl NodeInstaller {
     }
 
     /// 下载文件
-    async fn download_file(&self, url: &str, version: &str) -> Result<PathBuf> {
+    async fn download_file(&self, url: &str, _version: &str) -> Result<PathBuf> {
         let temp_dir = std::env::temp_dir();
-        let filename = url.split('/').last().unwrap_or("node.zip");
+        let filename = url.split('/').next_back().unwrap_or("node.zip");
         let download_path = temp_dir.join(filename);
 
         println!("Downloading from: {}", url);

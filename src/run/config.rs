@@ -30,12 +30,26 @@ pub struct RunConfig {
     pub env_vars: HashMap<String, String>,
     /// 工作目录
     pub working_dir: Option<PathBuf>,
-    /// 超时时间（毫秒）
+    /// 超时时间（毫秒），设置为None表示无超时限制（长时间运行）
     pub timeout: Option<u64>,
     /// 是否异步执行
     pub async_execution: Option<bool>,
     /// 依赖项
     pub dependencies: Option<Vec<String>>,
+    /// 是否启用流式执行（实时输出）
+    pub streaming_execution: Option<bool>,
+    /// 流式输出缓冲区大小（字节）
+    pub stream_buffer_size: Option<usize>,
+    /// 长时间运行进程的重启策略
+    pub restart_policy: Option<String>,
+    /// 最大重启次数
+    pub max_restarts: Option<u32>,
+    /// 重启间隔（毫秒）
+    pub restart_delay: Option<u64>,
+    /// 进程监控间隔（毫秒）
+    pub monitor_interval: Option<u64>,
+    /// 是否启用进程守护模式
+    pub daemon_mode: Option<bool>,
 }
 
 impl Default for RunConfig {
@@ -50,9 +64,16 @@ impl Default for RunConfig {
             args: Vec::new(),
             env_vars: HashMap::new(),
             working_dir: None,
-            timeout: None,
+            timeout: None, // None表示无超时限制，支持长时间运行
             async_execution: Some(true),
             dependencies: None,
+            streaming_execution: Some(false),
+            stream_buffer_size: Some(8192),
+            restart_policy: Some("never".to_string()),
+            max_restarts: Some(3),
+            restart_delay: Some(5000),
+            monitor_interval: Some(1000),
+            daemon_mode: Some(false),
         }
     }
 }
@@ -156,6 +177,48 @@ impl RunConfig {
         self
     }
 
+    /// 启用流式执行（实时输出）
+    pub fn with_streaming_execution(mut self, streaming: bool) -> Self {
+        self.streaming_execution = Some(streaming);
+        self
+    }
+
+    /// 设置流式输出缓冲区大小
+    pub fn with_stream_buffer_size(mut self, buffer_size: usize) -> Self {
+        self.stream_buffer_size = Some(buffer_size);
+        self
+    }
+
+    /// 设置重启策略
+    pub fn with_restart_policy(mut self, policy: &str) -> Self {
+        self.restart_policy = Some(policy.to_string());
+        self
+    }
+
+    /// 设置最大重启次数
+    pub fn with_max_restarts(mut self, max_restarts: u32) -> Self {
+        self.max_restarts = Some(max_restarts);
+        self
+    }
+
+    /// 设置重启间隔
+    pub fn with_restart_delay(mut self, delay_ms: u64) -> Self {
+        self.restart_delay = Some(delay_ms);
+        self
+    }
+
+    /// 设置进程监控间隔
+    pub fn with_monitor_interval(mut self, interval_ms: u64) -> Self {
+        self.monitor_interval = Some(interval_ms);
+        self
+    }
+
+    /// 启用进程守护模式
+    pub fn with_daemon_mode(mut self, daemon: bool) -> Self {
+        self.daemon_mode = Some(daemon);
+        self
+    }
+
     /// 验证配置的有效性
     pub fn validate(&self) -> Result<()> {
         // 检查脚本名称
@@ -189,6 +252,32 @@ impl RunConfig {
             return Err(Error::Config(
                 "Python script requires virtual environment path".to_string(),
             ));
+        }
+
+        // 检查流式执行配置
+        if let Some(buffer_size) = self.stream_buffer_size {
+            if !(1024..=65536).contains(&buffer_size) {
+                return Err(Error::Config(
+                    "Stream buffer size must be between 1024 and 65536 bytes".to_string(),
+                ));
+            }
+        }
+
+        // 检查重启策略
+        if let Some(ref policy) = self.restart_policy {
+            let valid_policies = ["never", "on-failure", "always"];
+            if !valid_policies.contains(&policy.as_str()) {
+                return Err(Error::Config(format!("Invalid restart policy: {}", policy)));
+            }
+        }
+
+        // 检查监控间隔
+        if let Some(interval) = self.monitor_interval {
+            if !(100..=60000).contains(&interval) {
+                return Err(Error::Config(
+                    "Monitor interval must be between 100 and 60000 milliseconds".to_string(),
+                ));
+            }
         }
 
         Ok(())
@@ -363,6 +452,49 @@ impl ConfigManager {
             }
         }
 
+        // 流式执行配置
+        if let Ok(streaming_execution) = std::env::var(format!("{}STREAMING_EXECUTION", env_prefix))
+        {
+            if let Ok(streaming) = streaming_execution.parse::<bool>() {
+                config.streaming_execution = Some(streaming);
+            }
+        }
+
+        if let Ok(stream_buffer_size) = std::env::var(format!("{}STREAM_BUFFER_SIZE", env_prefix)) {
+            if let Ok(buffer_size) = stream_buffer_size.parse::<usize>() {
+                config.stream_buffer_size = Some(buffer_size);
+            }
+        }
+
+        // 长时间运行配置
+        if let Ok(restart_policy) = std::env::var(format!("{}RESTART_POLICY", env_prefix)) {
+            config.restart_policy = Some(restart_policy);
+        }
+
+        if let Ok(max_restarts) = std::env::var(format!("{}MAX_RESTARTS", env_prefix)) {
+            if let Ok(max_restarts_val) = max_restarts.parse::<u32>() {
+                config.max_restarts = Some(max_restarts_val);
+            }
+        }
+
+        if let Ok(restart_delay) = std::env::var(format!("{}RESTART_DELAY", env_prefix)) {
+            if let Ok(delay_ms) = restart_delay.parse::<u64>() {
+                config.restart_delay = Some(delay_ms);
+            }
+        }
+
+        if let Ok(monitor_interval) = std::env::var(format!("{}MONITOR_INTERVAL", env_prefix)) {
+            if let Ok(interval_ms) = monitor_interval.parse::<u64>() {
+                config.monitor_interval = Some(interval_ms);
+            }
+        }
+
+        if let Ok(daemon_mode) = std::env::var(format!("{}DAEMON_MODE", env_prefix)) {
+            if let Ok(daemon) = daemon_mode.parse::<bool>() {
+                config.daemon_mode = Some(daemon);
+            }
+        }
+
         config
     }
 
@@ -488,6 +620,36 @@ impl ConfigManager {
             merged.dependencies = override_config.dependencies;
         }
 
+        // 合并流式执行配置
+        if override_config.streaming_execution.is_some() {
+            merged.streaming_execution = override_config.streaming_execution;
+        }
+
+        if override_config.stream_buffer_size.is_some() {
+            merged.stream_buffer_size = override_config.stream_buffer_size;
+        }
+
+        // 合并长时间运行配置
+        if override_config.restart_policy.is_some() {
+            merged.restart_policy = override_config.restart_policy;
+        }
+
+        if override_config.max_restarts.is_some() {
+            merged.max_restarts = override_config.max_restarts;
+        }
+
+        if override_config.restart_delay.is_some() {
+            merged.restart_delay = override_config.restart_delay;
+        }
+
+        if override_config.monitor_interval.is_some() {
+            merged.monitor_interval = override_config.monitor_interval;
+        }
+
+        if override_config.daemon_mode.is_some() {
+            merged.daemon_mode = override_config.daemon_mode;
+        }
+
         merged
     }
 
@@ -571,6 +733,36 @@ impl ConfigManager {
 
         if let Some(async_exec) = config.async_execution {
             summary.push_str(&format!("Async: {}\n", async_exec));
+        }
+
+        // 流式执行配置
+        if let Some(streaming) = config.streaming_execution {
+            summary.push_str(&format!("Streaming: {}\n", streaming));
+        }
+
+        if let Some(buffer_size) = config.stream_buffer_size {
+            summary.push_str(&format!("Stream Buffer: {} bytes\n", buffer_size));
+        }
+
+        // 长时间运行配置
+        if let Some(ref policy) = config.restart_policy {
+            summary.push_str(&format!("Restart Policy: {}\n", policy));
+        }
+
+        if let Some(max_restarts) = config.max_restarts {
+            summary.push_str(&format!("Max Restarts: {}\n", max_restarts));
+        }
+
+        if let Some(restart_delay) = config.restart_delay {
+            summary.push_str(&format!("Restart Delay: {}ms\n", restart_delay));
+        }
+
+        if let Some(monitor_interval) = config.monitor_interval {
+            summary.push_str(&format!("Monitor Interval: {}ms\n", monitor_interval));
+        }
+
+        if let Some(daemon_mode) = config.daemon_mode {
+            summary.push_str(&format!("Daemon Mode: {}\n", daemon_mode));
         }
 
         summary

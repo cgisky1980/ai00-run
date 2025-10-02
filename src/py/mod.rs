@@ -166,8 +166,8 @@ impl PyManager {
 
         println!("Activating virtual environment at: {}", path);
 
-        // 获取虚拟环境中的Python可执行文件路径
-        let python_path = self.get_python_path_in_venv(path).await?;
+        // 获取虚拟环境中的Python可执行文件路径（虽然当前未使用，但保留以备将来需要）
+        let _python_path = self.get_python_path_in_venv(path).await?;
 
         // 设置环境变量以激活虚拟环境
         let venv_path = std::path::Path::new(path);

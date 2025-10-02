@@ -16,6 +16,12 @@ AI00 Run is a modern multi-language runtime management library designed to provi
 - **Package Management**: Python package installation, uninstallation, and listing
 - **Version Management**: Node.js and Python version installation and checking
 - **Script Execution**: Support for executing scripts in specified runtime environments
+- **Streaming Execution**: Real-time output streaming for long-running processes
+- **Long-Running Process Support**: Indefinite execution with process monitoring and automatic restart
+- **Configuration Management**: JSON/YAML configuration file support for script execution
+- **Timeout Control**: Configurable execution timeouts for scripts and commands
+- **Process Monitoring**: Real-time process status tracking and health checks
+- **Automatic Restart**: Configurable restart policies for failed processes
 
 ## Quick Start
 
@@ -28,6 +34,101 @@ Add the dependency to your `Cargo.toml`:
 ai00-run = { git = "https://github.com/cgisky1980/ai00-run.git" }
 # Or use local path
 # ai00-run = { path = "./ai00-run" }
+```
+
+### 🚀 Primary Usage: Configuration-Based Script Execution
+
+**Strongly recommended to use configuration files for running scripts** - this approach provides the most complete and flexible functionality support, including complex configuration options, environment variable management, dependency installation, and more.
+
+#### Running Scripts from Configuration Files
+
+ai00-run supports running scripts based on configuration files (JSON or YAML format), which allows for more complex and reusable script configurations.
+
+```rust
+use ai00_run::run;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let runner = run::ScriptRunner::new();
+    
+    // Run script from JSON configuration
+    let result = runner.run_from_config("config/script_config.json", None).await?;
+    println!("Script result: {}", result.stdout);
+    
+    // Run script from YAML configuration
+    let result = runner.run_from_config("config/script_config.yaml", None).await?;
+    println!("Script result: {}", result.stdout);
+    
+    // Run with custom options
+    let options = run::ExecuteOptions {
+        timeout_ms: Some(60000),
+        working_dir: Some("examples/test-project".to_string()),
+        env_vars: Some(vec![("NODE_ENV".to_string(), "development".to_string())]),
+    };
+    
+    let result = runner.run_from_config_with_options("config.json", Some(options)).await?;
+    println!("Script result: {}", result.stdout);
+    
+    Ok(())
+}
+```
+
+#### Configuration File Format Examples
+
+**JSON Configuration Example:**
+```json
+{
+  "name": "example_python_app",
+  "description": "An example Python application configuration",
+  "script_type": "python",
+  "script_path": "src/main.py",
+  "runtime_version": "3.11",
+  "venv_path": ".venv",
+  "args": ["--verbose", "--debug"],
+  "env_vars": {
+    "PYTHONPATH": ".",
+    "DEBUG": "true"
+  },
+  "working_dir": "examples/test-project",
+  "timeout": null,
+  "async_execution": true,
+  "dependencies": ["requests", "flask"],
+  "streaming_execution": true,
+  "stream_buffer_size": 16384,
+  "restart_policy": "on-failure",
+  "max_restarts": 5,
+  "restart_delay": 10000,
+  "monitor_interval": 2000,
+  "daemon_mode": false
+}
+```
+
+**YAML Configuration Example:**
+```yaml
+name: example_node_app
+description: An example Node.js application configuration
+script_type: node
+script_path: src/app.js
+runtime_version: 18.0.0
+args:
+  - --port
+  - "3000"
+env_vars:
+  NODE_ENV: development
+  DEBUG: true
+working_dir: examples/test-project
+timeout: null
+async_execution: true
+dependencies:
+  - express
+  - cors
+streaming_execution: true
+stream_buffer_size: 16384
+restart_policy: on-failure
+max_restarts: 5
+restart_delay: 10000
+monitor_interval: 2000
+daemon_mode: false
 ```
 
 ### Basic Usage Example
@@ -249,6 +350,259 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
+### Streaming Execution
+
+ai00-run supports real-time streaming execution for long-running processes, allowing you to receive output as it's generated. The library automatically manages threads for streaming execution, providing built-in thread management capabilities.
+
+#### Use Cases
+
+- **Streaming script execution with automatic thread management**: Execute scripts in new threads with real-time output streaming
+- **Multi-script parallel execution**: Run multiple scripts concurrently with independent thread management
+- **Thread management and control**: Monitor, terminate, and manage script execution threads
+- **Configuration-based streaming execution**: Use JSON/YAML configuration files for streaming execution
+
+#### Streaming Script Execution with Automatic Thread Management
+
+ai00-run automatically creates new threads for streaming execution and provides comprehensive thread management:
+
+```rust
+use ai00_run::run::{run_node_script_stream, StreamMessage, StreamExecutorHandle};
+use tokio::time::{sleep, Duration};
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    // Execute script in a new thread with streaming output
+    let mut handle: StreamExecutorHandle = run_node_script_stream(
+        "server.js",
+        &["--port", "8080"],
+        Some("18.0.0")
+    ).await?;
+    
+    println!("Script started in new thread with ID: {}", handle.child_id);
+    
+    // Monitor real-time output from the new thread
+    let mut output_count = 0;
+    while let Some(message) = handle.receiver.recv().await {
+        match message {
+            StreamMessage::Stdout(data) => {
+                output_count += 1;
+                println!("[Thread {}] STDOUT: {}", handle.child_id, data);
+                
+                // Example: Stop after receiving 10 outputs
+                if output_count >= 10 {
+                    println!("Received 10 outputs, terminating thread...");
+                    handle.kill().await?;
+                    break;
+                }
+            }
+            StreamMessage::Stderr(data) => {
+                eprintln!("[Thread {}] STDERR: {}", handle.child_id, data);
+            }
+            StreamMessage::Exit(code) => {
+                println!("[Thread {}] Process exited with code: {}", handle.child_id, code);
+                break;
+            }
+            StreamMessage::Error(err) => {
+                eprintln!("[Thread {}] Error: {}", handle.child_id, err);
+                break;
+            }
+        }
+    }
+    
+    // Wait for thread completion
+    let exit_code = handle.wait().await?;
+    println!("Thread {} completed with exit code: {}", handle.child_id, exit_code);
+    
+    Ok(())
+}
+```
+
+#### Multi-Script Parallel Execution with Thread Management
+
+Run multiple scripts concurrently with independent thread management:
+
+```rust
+use ai00_run::run::{run_python_script_stream, run_shell_script_stream, StreamMessage};
+use tokio::task::JoinSet;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let mut tasks = JoinSet::new();
+    
+    // Start multiple scripts in separate threads
+    tasks.spawn(async move {
+        let mut handle = run_python_script_stream(
+            "data_processor.py",
+            &["--mode", "batch"],
+            Some("3.11"),
+            Some(".venv")
+        ).await?;
+        
+        println!("Started data processor in thread: {}", handle.child_id);
+        
+        while let Some(message) = handle.receiver.recv().await {
+            match message {
+                StreamMessage::Stdout(data) => println!("[Processor {}] {}", handle.child_id, data),
+                StreamMessage::Exit(code) => {
+                    println!("Processor {} exited with code: {}", handle.child_id, code);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        
+        handle.wait().await
+    });
+    
+    tasks.spawn(async move {
+        let mut handle = run_shell_script_stream(
+            "monitor.sh",
+            &["--interval", "5"]
+        ).await?;
+        
+        println!("Started monitor in thread: {}", handle.child_id);
+        
+        while let Some(message) = handle.receiver.recv().await {
+            match message {
+                StreamMessage::Stdout(data) => println!("[Monitor {}] {}", handle.child_id, data),
+                StreamMessage::Exit(code) => {
+                    println!("Monitor {} exited with code: {}", handle.child_id, code);
+                    break;
+                }
+                _ => {}
+            }
+        }
+        
+        handle.wait().await
+    });
+    
+    // Wait for all threads to complete
+    while let Some(result) = tasks.join_next().await {
+        match result {
+            Ok(exit_code) => println!("Thread completed with exit code: {}", exit_code),
+            Err(e) => eprintln!("Thread failed: {}", e),
+        }
+    }
+    
+    Ok(())
+}
+```
+
+#### Thread Management and Control
+
+ai00-run provides comprehensive thread management capabilities:
+
+```rust
+use ai00_run::run::{run_from_config_stream, StreamMessage};
+use std::sync::Arc;
+use tokio::sync::Mutex;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    // Start script with configuration
+    let mut handle = run_from_config_stream("config/streaming_server.json").await?;
+    
+    let handle_arc = Arc::new(Mutex::new(handle));
+    let thread_id = handle_arc.lock().await.child_id;
+    
+    println!("Script started in thread: {}", thread_id);
+    
+    // Monitor thread for 30 seconds, then terminate
+    let monitor_handle = Arc::clone(&handle_arc);
+    tokio::spawn(async move {
+        tokio::time::sleep(Duration::from_secs(30)).await;
+        println!("30 seconds elapsed, terminating thread {}...", thread_id);
+        
+        if let Ok(mut handle) = monitor_handle.lock().await {
+            let _ = handle.kill().await;
+        }
+    });
+    
+    // Process real-time output
+    let mut handle_guard = handle_arc.lock().await;
+    while let Some(message) = handle_guard.receiver.recv().await {
+        match message {
+            StreamMessage::Stdout(data) => {
+                println!("[Thread {}] {}", thread_id, data);
+            }
+            StreamMessage::Exit(code) => {
+                println!("Thread {} exited with code: {}", thread_id, code);
+                break;
+            }
+            StreamMessage::Error(err) => {
+                eprintln!("Thread {} error: {}", thread_id, err);
+                break;
+            }
+            _ => {}
+        }
+    }
+    
+    // Clean up
+    let exit_code = handle_guard.wait().await?;
+    println!("Thread {} cleanup completed with code: {}", thread_id, exit_code);
+    
+    Ok(())
+}
+```
+
+#### Thread Management Features
+
+- **Automatic thread creation**: Scripts are automatically executed in new threads
+- **Thread ID tracking**: Each execution thread has a unique identifier
+- **Graceful termination**: Use `kill()` method for controlled thread termination
+- **Thread monitoring**: Monitor thread status and receive completion notifications
+- **Resource cleanup**: Automatic cleanup of thread resources upon completion
+- **Error handling**: Comprehensive error handling for thread-related issues
+
+#### Extended Use Cases
+
+- **Microservices orchestration**: Manage multiple service threads
+- **Background task processing**: Execute long-running tasks in background threads
+- **Real-time data processing**: Stream process data with thread isolation
+- **Development servers**: Run development servers with thread management
+- **CI/CD pipelines**: Execute build and test scripts in managed threads
+
+#### Configuration-Based Streaming Execution
+
+Use JSON configuration for streaming execution with thread management:
+
+```json
+{
+  "script_type": "node",
+  "script_path": "server.js",
+  "args": ["--port", "8080"],
+  "node_version": "18.0.0",
+  "streaming_execution": true,
+  "timeout": 300000,
+  "working_dir": "./app",
+  "env": {
+    "NODE_ENV": "development",
+    "DEBUG": "true"
+  }
+}
+```
+
+Execute with automatic thread management:
+
+```rust
+use ai00_run::run::run_from_config_stream;
+
+#[tokio::main]
+async fn main() -> ai00_run::Result<()> {
+    let mut handle = run_from_config_stream("config/streaming_server.json").await?;
+    
+    println!("Script started in thread: {}", handle.child_id);
+    
+    // Thread management and output processing...
+    // (Same as previous examples)
+    
+    Ok(())
+}
+```
+
+### Configuration-Based Script Execution
+```
+
 ## Project Initialization
 
 ### Initializing New Projects
@@ -377,10 +731,14 @@ cargo run --release
 
 **Implemented Features:**
 - Python virtual environment creation and management (based on uv)
-- Python package installation, uninstallation, listing
+- Python package installation, uninstallation, and listing
 - Node.js version installation and checking
 - Script execution and command running
 - Async and sync command execution
+- **Streaming execution with real-time output**
+- **Configuration-based script execution (JSON/YAML)**
+- **Timeout control for scripts and commands**
+- **Advanced configuration management**
 
 **Partially Implemented Features:**
 - Node.js npx command execution

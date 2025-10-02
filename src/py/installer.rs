@@ -262,7 +262,7 @@ impl PyInstaller {
                         let version_part = &line[version_start + 8..]; // 跳过"cpython-"
                         if let Some(version_end) = version_part.find('-') {
                             let installed_version = &version_part[..version_end];
-                            
+
                             // 检查是否匹配（支持模糊匹配）
                             if installed_version.starts_with(version) {
                                 return Ok(true);
