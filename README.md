@@ -1,56 +1,56 @@
 # AI00 Run
 
-一个用Rust编写的多语言运行时管理和脚本执行库，提供Node.js和Python的版本管理、虚拟环境管理以及脚本执行功能。
+A multi-language runtime management and script execution library written in Rust, providing version management for Node.js and Python, virtual environment management, and script execution capabilities.
 
-## 项目概述
+## Project Overview
 
-AI00 Run 是一个现代化的多语言运行时管理库，旨在为开发者提供统一的API接口来管理Node.js和Python运行时环境。项目借鉴了fnm和uv的设计理念，结合了Rust语言的高性能特性，提供了快速、可靠的运行时管理体验。
+AI00 Run is a modern multi-language runtime management library designed to provide developers with a unified API interface for managing Node.js and Python runtime environments. The project draws inspiration from fnm and uv design concepts, combining Rust's high-performance characteristics to deliver a fast and reliable runtime management experience.
 
-**注意：这是一个Rust库项目，不是命令行工具。您需要在其他Rust程序中调用其API来使用功能。**
+**Note: This is a Rust library project, not a command-line tool. You need to call its API in other Rust programs to use its functionality.**
 
-### 核心特性
+### Core Features
 
-- **多语言支持**：统一管理Node.js和Python运行时
-- **高性能**：基于Rust构建，异步操作支持
-- **虚拟环境管理**：完整的Python虚拟环境支持（基于uv）
-- **包管理**：Python包安装、卸载和列表功能
-- **版本管理**：Node.js和Python版本安装和检查
-- **脚本执行**：支持在指定运行时环境中执行脚本
+- **Multi-language Support**: Unified management of Node.js and Python runtimes
+- **High Performance**: Built on Rust with async operation support
+- **Virtual Environment Management**: Complete Python virtual environment support (based on uv)
+- **Package Management**: Python package installation, uninstallation, and listing
+- **Version Management**: Node.js and Python version installation and checking
+- **Script Execution**: Support for executing scripts in specified runtime environments
 
-## 快速开始
+## Quick Start
 
-### 添加依赖
+### Adding Dependencies
 
-在您的`Cargo.toml`中添加依赖：
+Add the dependency to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-ai00-run = { git = "https://github.com/ai00-run/ai00-run.git" }
-# 或者使用本地路径
+ai00-run = { git = "https://github.com/cgisky1980/ai00-run.git" }
+# Or use local path
 # ai00-run = { path = "./ai00-run" }
 ```
 
-### 基本使用示例
+### Basic Usage Example
 
 ```rust
 use ai00_run::{node, py, run};
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 安装Node.js版本
+    // Install Node.js version
     node::install("18.0.0").await?;
     
-    // 检查Node.js是否已安装
+    // Check if Node.js is installed
     let is_installed = node::is_installed("18.0.0").await?;
     println!("Node.js 18.0.0 installed: {}", is_installed);
     
-    // 创建Python虚拟环境
+    // Create Python virtual environment
     py::create_venv(None, Some("3.11")).await?;
     
-    // 安装Python包
+    // Install Python packages
     py::install_packages(".venv", &["requests", "flask"]).await?;
     
-    // 运行Python脚本
+    // Run Python script
     let runner = run::ScriptRunner::new();
     let result = runner.run_python_script("script.py", &[], Some("3.11"), Some(".venv")).await?;
     
@@ -60,38 +60,38 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-## Node.js 管理
+## Node.js Management
 
-### 安装Node.js版本
+### Installing Node.js Versions
 
 ```rust
 use ai00_run::node;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 安装指定版本的Node.js
+    // Install specified Node.js version
     node::install("18.0.0").await?;
     
     Ok(())
 }
 ```
 
-### 版本管理
+### Version Management
 
 ```rust
 use ai00_run::node;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 检查Node.js是否已安装
+    // Check if Node.js is installed
     let is_installed = node::is_installed("18.0.0").await?;
     println!("Node.js 18.0.0 installed: {}", is_installed);
     
-    // 列出已安装的本地Node.js版本
+    // List locally installed Node.js versions
     let local_versions = node::list_local().await?;
     println!("Installed versions: {:?}", local_versions);
     
-    // 获取指定版本的Node.js可执行文件路径
+    // Get Node.js executable path for specified version
     let node_path = node::get_node_path("18.0.0").await?;
     println!("Node.js executable path: {}", node_path);
     
@@ -99,65 +99,65 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-### 使用npx执行命令
+### Using npx Commands
 
 ```rust
 use ai00_run::node;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 在指定版本下使用npx运行命令
+    // Run npx command with specified version
     node::run_npx_command("18.0.0", "--version", &[]).await?;
     
-    // 使用"current"版本（将使用第一个已安装的版本）
+    // Use "current" version (will use first installed version)
     node::run_npx_command("current", "create-react-app", &["my-app".to_string()]).await?;
     
     Ok(())
 }
 ```
 
-**注意：** 当前版本中，`list_remote()`、`use_version()`、`current()` 等功能标记为TODO，尚未完全实现。
+**Note:** In the current version, functions like `list_remote()`, `use_version()`, `current()` are marked as TODO and not fully implemented.
 
-## Python 管理
+## Python Management
 
-### 虚拟环境管理
+### Virtual Environment Management
 
 ```rust
 use ai00_run::py;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 创建虚拟环境（默认使用Python 3.11）
+    // Create virtual environment (default Python 3.11)
     py::create_venv(None, Some("3.11")).await?;
     
-    // 检查虚拟环境是否存在
+    // Check if virtual environment exists
     let exists = py::venv_exists(".venv").await?;
     println!("Virtual environment exists: {}", exists);
     
-    // 激活虚拟环境
+    // Activate virtual environment
     py::activate_venv(".venv").await?;
     
-    // 停用虚拟环境
+    // Deactivate virtual environment
     py::deactivate_venv().await?;
     
     Ok(())
 }
 ```
 
-### 包管理
+### Package Management
 
 ```rust
 use ai00_run::py;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 安装Python包到虚拟环境
+    // Install Python packages to virtual environment
     py::install_packages(".venv", &["requests", "flask"]).await?;
     
-    // 卸载Python包
+    // Uninstall Python packages
     py::uninstall_packages(".venv", &["requests"]).await?;
     
-    // 列出虚拟环境中已安装的包
+    // List packages installed in virtual environment
     let packages = py::list_packages(".venv").await?;
     println!("Installed packages: {:?}", packages);
     
@@ -165,24 +165,24 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-### 脚本和命令执行
+### Script and Command Execution
 
 ```rust
 use ai00_run::py;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 在虚拟环境中运行Python脚本
+    // Run Python script in virtual environment
     py::run_script(".venv", "print('Hello from Python!')").await?;
     
-    // 在虚拟环境中运行Python命令
+    // Run Python command in virtual environment
     py::run_command(".venv", "import sys; print(sys.version)").await?;
     
-    // 获取虚拟环境中Python可执行文件的路径
+    // Get Python executable path in virtual environment
     let python_path = py::get_python_path_in_venv(".venv").await?;
     println!("Python executable path: {}", python_path);
     
-    // 获取指定版本的Python可执行文件路径
+    // Get Python executable path for specified version
     let python_path = py::get_python_path("3.11").await?;
     println!("System Python path: {}", python_path);
     
@@ -190,11 +190,11 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-**注意：** Python管理基于uv工具实现，需要确保系统已安装uv。
+**Note:** Python management is based on the uv tool, ensure uv is installed on your system.
 
-## 脚本执行
+## Script Execution
 
-### 运行脚本
+### Running Scripts
 
 ```rust
 use ai00_run::run;
@@ -203,15 +203,15 @@ use ai00_run::run;
 async fn main() -> ai00_run::Result<()> {
     let runner = run::ScriptRunner::new();
     
-    // 运行Node.js脚本
+    // Run Node.js script
     let result = runner.run_node_script("app.js", &[], Some("18.0.0")).await?;
     println!("Node.js script result: {}", result.stdout);
     
-    // 运行Python脚本
+    // Run Python script
     let result = runner.run_python_script("script.py", &[], Some("3.11"), Some(".venv")).await?;
     println!("Python script result: {}", result.stdout);
     
-    // 运行Shell脚本
+    // Run shell script
     let result = runner.run_shell_script("script.sh", &[]).await?;
     println!("Shell script result: {}", result.stdout);
     
@@ -219,7 +219,7 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-### 直接执行命令
+### Direct Command Execution
 
 ```rust
 use ai00_run::run;
@@ -228,19 +228,19 @@ use ai00_run::run;
 async fn main() -> ai00_run::Result<()> {
     let executor = run::ScriptExecutor::new();
     
-    // 异步执行命令
+    // Execute command asynchronously
     let result = executor.execute_command_async("echo hello world", None, None).await?;
     println!("Command result: {}", result.stdout);
     
-    // 同步执行命令
+    // Execute command synchronously
     let result = executor.execute_command_sync("ls -la", None, None)?;
     println!("Command result: {}", result.stdout);
     
-    // 检查命令是否存在
+    // Check if command exists
     let exists = executor.command_exists("python").await;
     println!("Python command exists: {}", exists);
     
-    // 获取命令的完整路径
+    // Get full path of command
     if let Some(path) = executor.get_command_path("python").await {
         println!("Python command path: {}", path);
     }
@@ -249,27 +249,27 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-## 项目初始化
+## Project Initialization
 
-### 初始化新项目
+### Initializing New Projects
 
 ```rust
 use ai00_run::init;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 初始化项目
+    // Initialize project
     init::initialize_project(None, None, None).await?;
     
     Ok(())
 }
 ```
 
-## 配置说明
+## Configuration
 
-### 错误处理
+### Error Handling
 
-库使用统一的错误类型 `ai00_run::Result<T>`，包含各种运行时错误：
+The library uses a unified error type `ai00_run::Result<T>` containing various runtime errors:
 
 ```rust
 use ai00_run::{node, py, run};
@@ -285,150 +285,150 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-### 异步支持
+### Async Support
 
-所有API都支持异步操作，需要使用 `#[tokio::main]` 宏：
+All APIs support async operations and require the `#[tokio::main]` macro:
 
 ```rust
 use ai00_run::node;
 
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
-    // 异步安装Node.js
+    // Install Node.js asynchronously
     node::install("18.0.0").await?;
     
     Ok(())
 }
 ```
 
-## 技术架构
+## Technical Architecture
 
-### 模块结构
+### Module Structure
 
 ```
 src/
-├── lib.rs               # 库入口（提供公共API）
-├── error.rs             # 错误处理
-├── init.rs              # 项目初始化
-├── node/                # Node.js管理模块
-│   ├── mod.rs           # 模块入口（提供NodeManager和便捷函数）
-│   ├── installer.rs     # Node.js安装器
-│   └── manager.rs       # Node.js管理器
-├── py/                  # Python管理模块
-│   ├── mod.rs           # 模块入口（提供PyManager和便捷函数）
-│   ├── installer.rs     # Python安装器（基于uv）
-│   └── manager.rs       # Python管理器
-└── run/                 # 脚本执行模块
-    ├── mod.rs           # 模块入口（提供ScriptRunner和ScriptExecutor）
-    ├── checker.rs       # 脚本检查器
-    ├── config.rs        # 运行配置
-    └── executor.rs      # 脚本执行器
+├── lib.rs               # Library entry (provides public API)
+├── error.rs             # Error handling
+├── init.rs              # Project initialization
+├── node/                # Node.js management module
+│   ├── mod.rs           # Module entry (provides NodeManager and convenience functions)
+│   ├── installer.rs     # Node.js installer
+│   └── manager.rs       # Node.js manager
+├── py/                  # Python management module
+│   ├── mod.rs           # Module entry (provides PyManager and convenience functions)
+│   ├── installer.rs     # Python installer (based on uv)
+│   └── manager.rs       # Python manager
+└── run/                 # Script execution module
+    ├── mod.rs           # Module entry (provides ScriptRunner and ScriptExecutor)
+    ├── checker.rs       # Script checker
+    ├── config.rs        # Runtime configuration
+    └── executor.rs      # Script executor
 ```
 
-### 核心依赖
+### Core Dependencies
 
-- **tokio**：异步运行时
-- **reqwest**：HTTP客户端（用于下载Node.js）
-- **serde**：序列化/反序列化
-- **zip/tar**：压缩包处理（用于解压Node.js）
+- **tokio**: Async runtime
+- **reqwest**: HTTP client (for downloading Node.js)
+- **serde**: Serialization/deserialization
+- **zip/tar**: Archive handling (for extracting Node.js)
 
-### 设计特点
+### Design Features
 
-1. **基于uv的Python管理**：Python功能完全基于uv工具实现
-2. **异步优先**：所有API都支持异步操作
-3. **错误处理**：统一的错误类型和详细的错误信息
-4. **跨平台支持**：支持Windows和Unix系统
-5. **模块化设计**：清晰的模块分离，便于维护和扩展
+1. **uv-based Python Management**: Python functionality fully implemented based on uv tool
+2. **Async-First**: All APIs support async operations
+3. **Error Handling**: Unified error type with detailed error information
+4. **Cross-Platform Support**: Support for Windows and Unix systems
+5. **Modular Design**: Clear module separation for easy maintenance and extension
 
-## 开发指南
+## Development Guide
 
-### 构建项目
+### Building the Project
 
 ```bash
-# 开发模式构建
+# Development build
 cargo build
 
-# 发布模式构建（推荐）
+# Release build (recommended)
 cargo build --release
 
-# 运行测试
+# Run tests
 cargo test
 
-# 代码格式化
+# Code formatting
 cargo fmt
 
-# 代码检查
+# Code linting
 cargo clippy
 ```
 
-### 运行示例项目
+### Running Example Projects
 
-项目包含示例代码，位于 `examples/` 目录：
+The project includes example code located in the `examples/` directory:
 
 ```bash
-# 进入示例项目目录
+# Enter example project directory
 cd examples/test-project
 
-# 构建并运行示例
+# Build and run example
 cargo run --release
 ```
 
-### 功能状态
+### Feature Status
 
-**已实现的功能：**
-- Python虚拟环境创建和管理（基于uv）
-- Python包安装、卸载、列表
-- Node.js版本安装和检查
-- 脚本执行和命令运行
-- 异步和同步命令执行
+**Implemented Features:**
+- Python virtual environment creation and management (based on uv)
+- Python package installation, uninstallation, listing
+- Node.js version installation and checking
+- Script execution and command running
+- Async and sync command execution
 
-**部分实现的功能：**
-- Node.js的npx命令执行
-- 命令存在性检查
+**Partially Implemented Features:**
+- Node.js npx command execution
+- Command existence checking
 
-**未实现的功能（标记为TODO）：**
-- Node.js远程版本列表
-- Node.js版本切换
-- Node.js当前版本获取
-- 完整的权限检查
+**Not Implemented Features (marked as TODO):**
+- Node.js remote version listing
+- Node.js version switching
+- Node.js current version retrieval
+- Complete permission checking
 
-## 系统要求
+## System Requirements
 
-### 依赖工具
+### Required Tools
 
-- **uv**：Python管理功能需要安装uv工具
-- **Node.js**：Node.js管理功能需要系统安装Node.js或通过本库安装
-- **Rust 1.70+**：构建项目需要Rust工具链
+- **uv**: Python management features require uv tool installation
+- **Node.js**: Node.js management features require system Node.js installation or installation through this library
+- **Rust 1.70+**: Rust toolchain required for building the project
 
-### 平台支持
+### Platform Support
 
-- **Windows**：完全支持
-- **Linux**：完全支持
-- **macOS**：完全支持
+- **Windows**: Fully supported
+- **Linux**: Fully supported
+- **macOS**: Fully supported
 
-## 故障排除
+## Troubleshooting
 
-### 常见问题
+### Common Issues
 
-1. **uv工具未安装**
+1. **uv Tool Not Installed**
    ```bash
-   # 安装uv工具
+   # Install uv tool
    curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-2. **Node.js安装失败**
-   - 检查网络连接
-   - 确保有足够的磁盘空间
-   - 检查系统权限
+2. **Node.js Installation Failed**
+   - Check network connection
+   - Ensure sufficient disk space
+   - Check system permissions
 
-3. **Python虚拟环境创建失败**
-   - 确保uv工具正确安装
-   - 检查Python版本是否可用
-   - 确保目标目录有写入权限
+3. **Python Virtual Environment Creation Failed**
+   - Ensure uv tool is correctly installed
+   - Check if Python version is available
+   - Ensure write permissions in target directory
 
-### 错误处理
+### Error Handling
 
-库提供详细的错误信息，帮助诊断问题：
+The library provides detailed error information to help diagnose issues:
 
 ```rust
 use ai00_run::{node, py};
@@ -436,10 +436,10 @@ use ai00_run::{node, py};
 #[tokio::main]
 async fn main() -> ai00_run::Result<()> {
     match node::install("18.0.0").await {
-        Ok(()) => println!("安装成功"),
+        Ok(()) => println!("Installation successful"),
         Err(e) => {
-            eprintln!("安装失败: {}", e);
-            // 根据错误类型进行特定处理
+            eprintln!("Installation failed: {}", e);
+            // Handle specific error types
         }
     }
     
@@ -447,45 +447,45 @@ async fn main() -> ai00_run::Result<()> {
 }
 ```
 
-## 贡献指南
+## Contributing
 
-我们欢迎社区贡献！请参考以下指南：
+We welcome community contributions! Please refer to the following guidelines:
 
-1. Fork 项目仓库
-2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
-3. 提交更改 (`git commit -m 'Add some amazing feature'`)
-4. 推送到分支 (`git push origin feature/amazing-feature`)
-5. 创建Pull Request
+1. Fork the project repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Create a Pull Request
 
-### 开发规范
+### Development Standards
 
-- 遵循Rust编码规范
-- 添加适当的测试用例
-- 更新相关文档
-- 确保所有测试通过
-- 运行 `cargo fmt` 和 `cargo clippy` 确保代码质量
+- Follow Rust coding standards
+- Add appropriate test cases
+- Update relevant documentation
+- Ensure all tests pass
+- Run `cargo fmt` and `cargo clippy` to ensure code quality
 
-## 许可证
+## License
 
-本项目采用 MIT OR Apache-2.0 双许可证。
+This project is licensed under MIT OR Apache-2.0 dual license.
 
-## 致谢
+## Acknowledgments
 
-AI00 Run 的灵感来源于以下优秀项目：
+AI00 Run is inspired by the following excellent projects:
 
 - [fnm](https://github.com/Schniz/fnm) - Fast Node Manager
-- [uv](https://github.com/astral-sh/uv) - 极速Python包管理器
+- [uv](https://github.com/astral-sh/uv) - Extremely fast Python package manager
 - [nvm](https://github.com/nvm-sh/nvm) - Node Version Manager
 
-感谢这些项目为运行时管理领域做出的贡献！
+Thanks to these projects for their contributions to the runtime management field!
 
-## 支持与反馈
+## Support and Feedback
 
-如果您遇到问题或有改进建议，请通过以下方式联系我们：
+If you encounter issues or have improvement suggestions, please contact us through:
 
-- [GitHub Issues](https://github.com/ai00-run/ai00-run/issues)
-- [项目文档](https://ai00-run.github.io/ai00-run/)
+- [GitHub Issues](https://github.com/cgisky1980/ai00-run/issues)
+- [Project Documentation](https://ai00-run.github.io/ai00-run/)
 
 ---
 
-**AI00 Run** - 让多语言运行时管理变得简单高效！
+**AI00 Run** - Making multi-language runtime management simple and efficient!
