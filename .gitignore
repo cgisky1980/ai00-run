@@ -1,0 +1,48 @@
+# Rust build artifacts
+target/
+**/*.rs.bk
+
+# Cargo build artifacts
+Cargo.lock
+
+# Python virtual environments
+.venv/
+venv/
+.env/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp
+
+# Backup files
+*.bak
+*.backup
+
+# Local configuration files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Benchmarking data
+benches/output/
+
+# Documentation
+/doc/
+
+# Test coverage
+/coverage/
+*.profraw

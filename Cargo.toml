@@ -1,0 +1,82 @@
+[package]
+name = "ai00-run"
+version = "0.1.0"
+edition = "2021"
+authors = ["AI00-Run Team"]
+license = "MIT OR Apache-2.0"
+description = "A Rust library for unified runtime management of Node.js, Python, and Rust environments"
+repository = "https://github.com/ai00-run/ai00-run"
+readme = "README.md"
+
+# 这是一个库项目，不是可执行程序
+[lib]
+name = "ai00_run"
+path = "src/lib.rs"
+
+ 
+
+[features]
+default = ["node", "py", "run"]
+node = []     # Node.js运行时支持（独立实现）
+py = []       # Python运行时支持（复用uv）
+run = []      # 脚本运行管理支持
+full = ["node", "py", "run"]
+
+[dependencies]
+# Core dependencies
+clap = { version = "4.0", features = ["derive"] }
+tokio = { version = "1.0", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+anyhow = "1.0"
+thiserror = "1.0"
+
+# File system and path handling
+path-slash = "0.2"
+dunce = "1.0"
+dirs = "5.0"
+
+# Configuration management
+config = "0.13"
+toml = "0.8"
+
+# HTTP client for downloading runtimes
+reqwest = { version = "0.11", features = ["json"] }
+
+# Progress bars and UI
+indicatif = "0.17"
+console = "0.15"
+
+# Node.js manager dependencies
+zip = "0.6"
+flate2 = "1.0"
+tar = "0.4"
+
+
+
+# Python management dependencies
+fs-err = { version = "3.0.0", features = ["tokio"] }
+itertools = "0.14.0"
+owo-colors = "4.1.0"
+url = "2.5.2"
+which = "8.0.0"
+once_cell = "1.20.2"
+
+# Platform-specific dependencies
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winbase", "winuser", "winreg"] }
+
+[target.'cfg(unix)'.dependencies]
+nix = "0.27"
+
+# Development dependencies
+[dev-dependencies]
+tempfile = "3.8"
+assert_cmd = "2.0"
+predicates = "3.0"
+serial_test = "1.0"
+
+[dev-dependencies.criterion]
+version = "0.5"
+features = ["html_reports"]
